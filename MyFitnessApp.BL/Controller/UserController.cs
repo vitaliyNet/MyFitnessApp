@@ -15,53 +15,76 @@ namespace MyFitnessApp.BL.Controller
     public class UserController
     {
         /// <summary>
-        /// application user
+        /// application users
         /// </summary>
-        public User User { get; }
-
+        public List<User> Users { get; }
+        public User CurrentUser { get; set; }
+        public bool IsUserNew { get; } = false;
         /// <summary>
         /// creation of new user controller
         /// </summary>
         /// <param name="user"></param>
-        public UserController(string userName, DateTime birthday, 
-                                string genderName, double height, 
-                                double weight)
+        public UserController(string userName)
         {
-            // TODO: checking
+            if(string.IsNullOrWhiteSpace(userName))
+            {
+                throw new ArgumentNullException("user name can't be null", nameof(userName));
+            }
 
-            var gender = new Gender(genderName);
-            User = new User(userName, birthday, gender, height, weight);
+            Users = GetUserData();
+
+            CurrentUser = Users.FirstOrDefault(a => a.Name == userName);
+            if(CurrentUser == null)
+            {
+                CurrentUser = new User(userName);
+                Users.Add(CurrentUser);
+                IsUserNew = true;
+                Save();
+            }
         }
-
+        
         /// <summary>
-        /// Loading users data
+        /// Loading list of users
         /// </summary>
         /// <returns></returns>
-        public UserController()
+        private List<User> GetUserData()
         {
             var userFormatter = new BinaryFormatter();
 
-            using (var userFileStream = new FileStream("user.dat", FileMode.OpenOrCreate))
+            using (var fs = new FileStream("user.dat", FileMode.OpenOrCreate))
             {
-                if (userFormatter.Deserialize(userFileStream) is User user)
+                if (fs.Length > 0 && userFormatter.Deserialize(fs) is List<User> users)
                 {
-                    User = User;
-                };
-
-                // TODO: What to do if no user was read.
+                    return users;
+                }
+                else
+                {
+                    return new List<User>();
+                }
             }
         }
 
         /// <summary>
         /// storing users data
         /// </summary>
-        public void Save()
+        private void Save()
         {
-            var userFormatter = new BinaryFormatter();
-            using (var userFile = new FileStream("user.dat", FileMode.OpenOrCreate))
+            var formatter = new BinaryFormatter();
+            using (var fs = new FileStream("user.dat", FileMode.OpenOrCreate))
             {
-                userFormatter.Serialize(userFile, User);
+                formatter.Serialize(fs, Users);
             }
+        }
+
+        public void SetNewUser(string genderName, DateTime birthday, double height = 1, double weight = 1)
+        {
+            //TODO create data checking 
+
+            CurrentUser.Gender = new Gender(genderName);
+            CurrentUser.Birthday = birthday;
+            CurrentUser.Height = height;
+            CurrentUser.Weight = weight;
+            Save();
         }
     }
 }
